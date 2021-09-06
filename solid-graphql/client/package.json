@@ -14,6 +14,10 @@
     "vite-plugin-solid": "^2.0.3"
   },
   "dependencies": {
-    "solid-js": "^1.1.1"
+    "@urql/core": "^2.3.1",
+    "graphql": "^15.5.3",
+    "solid-js": "^1.1.1",
+    "subscriptions-transport-ws": "^0.9.19",
+    "wonka": "^4.0.15"
   }
 }
