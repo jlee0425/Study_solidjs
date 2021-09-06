@@ -5,6 +5,7 @@ import {
 } from '@urql/core';
 import { Component, createResource, createSignal, For } from 'solid-js';
 import { SubscriptionClient } from 'subscriptions-transport-ws';
+import { pipe, subscribe } from 'wonka';
 
 const subscriptionClient = new SubscriptionClient('ws://localhost:4000', {
 	reconnect: true,
@@ -19,23 +20,27 @@ const client = createClient({
 		}),
 	],
 });
+interface Todo {
+	id: string;
+	text: string;
+	done: boolean;
+}
+const [todos, setTodos] = createSignal<Todo[]>([]);
 
-const [todos, { refetch }] = createResource(() =>
-	client
-		.query(
-			`query {
-        getTodos {
-          id
-          done
-          text
-        }
+const { unsubscribe } = pipe(
+	client.subscription(`
+    subscription TodosSub {
+      todos {
+        id
+        done
+        text
       }
-  `,
-		)
-		.toPromise()
-		.then(({ data }) => data.getTodos),
+    }
+  `),
+	subscribe((result) => {
+		setTodos(result.data.todos);
+	}),
 );
-
 const App: Component = () => {
 	const [text, setText] = createSignal('');
 	const onAdd = async () => {
@@ -52,7 +57,6 @@ const App: Component = () => {
 			)
 			.toPromise()
 			.then(() => {
-				refetch();
 				setText('');
 			});
 	};
@@ -66,12 +70,9 @@ const App: Component = () => {
         }
       }
     `,
-				{ id, done: !todos().find((todo) => todo.id === id) },
+				{ id, done: !todos().find((todo) => todo.id === id).done },
 			)
-			.toPromise()
-			.then(() => {
-				// refetch();
-			});
+			.toPromise();
 	};
 	return (
 		<div>
