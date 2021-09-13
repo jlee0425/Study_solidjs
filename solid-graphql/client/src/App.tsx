@@ -20,81 +20,74 @@ const client = createClient({
 		}),
 	],
 });
-interface Todo {
+interface ChatMessage {
 	id: string;
 	text: string;
-	done: boolean;
+	from: string;
+	time: string;
 }
-const [todos, setTodos] = createSignal<Todo[]>([]);
+const [messages, setMessages] = createSignal<ChatMessage[]>([]);
 
 const { unsubscribe } = pipe(
 	client.subscription(`
-    subscription TodosSub {
-      todos {
+    subscription MessagesSub {
+      messages {
         id
-        done
         text
+				from
+				time
       }
     }
   `),
 	subscribe((result) => {
-		setTodos(result.data.todos);
+		setMessages(result.data.messages);
 	}),
 );
 const App: Component = () => {
 	const [text, setText] = createSignal('');
+	const [from, setFrom] = createSignal('Jeongkyu');
+
 	const onAdd = async () => {
 		await client
 			.mutation(
 				`
-      mutation($text: String!) {
-        addTodo(text: $text) {
+      mutation($text: String!, $from: String!, $time: String!) {
+        add(text: $text, from: $from, time: $time) {
           id
         }
       }
     `,
-				{ text: text() },
+				{ text: text(), from: from(), time: new Date().toLocaleTimeString() },
 			)
 			.toPromise()
 			.then(() => {
 				setText('');
 			});
 	};
-	const toggleTodo = async (id: string) => {
-		await client
-			.mutation(
-				`
-      mutation($id: ID!, $done: Boolean!) {
-        setDone(id: $id, done: $done) {
-          id
-        }
-      }
-    `,
-				{ id, done: !todos().find((todo) => todo.id === id).done },
-			)
-			.toPromise();
-	};
 	return (
 		<div>
-			<For each={todos()}>
-				{({ id, done, text }) => (
+			<For each={messages()}>
+				{({ text, from, time }) => (
 					<div>
-						<input
-							type='checkbox'
-							checked={done}
-							onclick={() => toggleTodo(id)}
-						/>
-						{text}
+						<p>
+							<strong>{from}</strong>: <span>{text}</span>
+						</p>
+						<span>{time}</span>
 					</div>
 				)}
 			</For>
 			<div>
 				<input
 					type='text'
+					value={from()}
+					oninput={(evt) => setFrom(evt.currentTarget.value)}
+				/>
+				<input
+					type='text'
 					value={text()}
 					oninput={(evt) => setText(evt.currentTarget.value)}
 				/>
-				<button onclick={onAdd}>Add</button>
+				<button onclick={onAdd}>Send</button>
 			</div>
 		</div>
 	);

@@ -1,67 +1,55 @@
 import { GraphQLServer, PubSub } from 'graphql-yoga';
 
-const TODOS_CHANNEL = 'TODOS_CHANNEL';
+const CHAT_CHANNEL = 'CHAT_CHANNEL';
 const pubsub = new PubSub();
-let todos = [{ id: '1', text: 'Learn GraphQL + Solidjs', done: false }];
+let messages: { id: string; text: string; from: string; time: string }[] = [];
 
 const typeDefs = `
-  type Todo {
+  type ChatMessage {
     id: ID!
-    done: Boolean!
     text: String!
+		from: String!
+		time: String!
   }
   type Query {
-    getTodos: [Todo]!
+    messages: [ChatMessage]!
   }
   type Mutation {
-    addTodo(text: String!): Todo
-    setDone(id: ID!, done: Boolean!): Todo
+    add(text: String!, from: String!, time: String!): ChatMessage
   }
   type Subscription {
-    todos: [Todo]!
+    messages: [ChatMessage]!
   }
 `;
 
 const resolvers = {
 	Query: {
-		getTodos: () => {
-			return todos;
+		messages: () => {
+			return messages;
 		},
 	},
 	Mutation: {
-		addTodo: (
+		add: (
 			_: unknown,
-			{ text }: { text: string },
+			{ text, from, time }: { text: string; from: string; time: string },
 			{ pubsub }: { pubsub: PubSub },
 		) => {
-			const newTodo = {
-				id: String(todos.length + 1),
+			const newMessage = {
+				id: String(messages.length + 1),
 				text,
-				done: false,
+				from,
+				time,
 			};
-			todos.push(newTodo);
-			pubsub.publish(TODOS_CHANNEL, { todos });
-			return newTodo;
-		},
-		setDone: (
-			_: unknown,
-			{ id, done }: { id: string; done: boolean },
-			{ pubsub }: { pubsub: PubSub },
-		) => {
-			const todo = todos.find((todo) => todo.id === id);
-			if (!todo) {
-				throw new Error('Todo not found');
-			}
-			todo.done = done;
-			pubsub.publish(TODOS_CHANNEL, { todos });
-			return todo;
+			messages.push(newMessage);
+			pubsub.publish(CHAT_CHANNEL, { messages });
+			return newMessage;
 		},
 	},
 	Subscription: {
-		todos: {
+		messages: {
 			subscribe: () => {
-				const iterator = pubsub.asyncIterator(TODOS_CHANNEL);
-				pubsub.publish(TODOS_CHANNEL, { todos });
+				const iterator = pubsub.asyncIterator(CHAT_CHANNEL);
+				pubsub.publish(CHAT_CHANNEL, { messages });
 				return iterator;
 			},
 		},
